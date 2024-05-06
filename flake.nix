@@ -5,7 +5,8 @@
   '';
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.11";
+    # stackage 21.25 / ghc948 (Jan 7 2024) (Last of 9.4.x)
+    nixpkgs.url = "github:NixOS/nixpkgs/edebca765c17d551b9634c02f6a02f1b122e0ba0";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -17,7 +18,7 @@
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {inherit system;};
 
-      hPkgs = pkgs.haskell.packages.ghc947;
+      hPkgs = pkgs.haskellPackages;
 
       devTools = [
         stack-wrapped
