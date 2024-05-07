@@ -39,7 +39,9 @@
     in {
       formatter = pkgs.alejandra;
 
-      packages.default = (pkgs.haskellPackages.callCabal2nix "prop-solveur" ./. {}).overrideAttrs (old: {
+      packages.default =
+      pkgs.haskell.lib.justStaticExecutables (
+        (pkgs.haskellPackages.callCabal2nix "prop-solveur" ./. {}).overrideAttrs (old: {
         nativeBuildInputs = (old.nativeBuildInputs or []) ++ [pkgs.installShellFiles];
         postInstall =
           (old.postInstall or "")
@@ -49,7 +51,7 @@
                 --fish <("$out/bin/prop-solveur" --fish-completion-script "$out/bin/prop-solveur") \
                 --zsh  <("$out/bin/prop-solveur" --zsh-completion-script  "$out/bin/prop-solveur")
           '';
-      });
+      }));
 
       devShells.default = pkgs.mkShell {
         buildInputs = devTools;
