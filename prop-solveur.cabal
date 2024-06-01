@@ -1,4 +1,4 @@
-cabal-version:      2.4
+cabal-version:      3.0
 name:               prop-solveur
 version:            0.1.0.0
 author:             Léana 江
@@ -6,25 +6,16 @@ maintainer:         leana.jiang@icloud.com
 extra-source-files: README.md
 
 common common
-  default-language:   Haskell2010
-  ghc-options:
-    -Wall -Wcompat -Widentities -Wincomplete-record-updates
-    -Wincomplete-patterns -Wincomplete-uni-patterns
-    -Wredundant-constraints -fwarn-unused-imports -fwarn-name-shadowing
-
+  default-language:   GHC2021
+  ghc-options:        -Wall -Wextra
   build-depends:
-    , ansi-terminal         ^>=0.11.5
-    , base                  >=4.17      && <5
-    , containers            ^>=0.6
-    , megaparsec            ^>=9.3.1
-    , optparse-applicative  ^>=0.17.1.0
-    , parser-combinators    ^>=1.3.0
-    , pretty-simple         ^>=4.1.2.0
-    , text                  ^>=2.0.2
+    , base           ^>=4.17
+    , containers     ^>=0.6
+    , megaparsec     ^>=9.3.1
+    , pretty-simple  ^>=4.1.2.0
+    , text           ^>=2.0.2
 
-  default-extensions:
-    OverloadedStrings
-    TupleSections
+  default-extensions: BlockArguments
 
 library
   import:          common
@@ -36,8 +27,11 @@ library
 
 executable prop-solveur
   import:        common
-  main-is:       src/Main.hs
-  build-depends: prop-solveur
+  main-is:       app/Main.hs
+  build-depends:
+    , ansi-terminal         ^>=0.11.5
+    , optparse-applicative  ^>=0.17.1.0
+    , prop-solveur
 
 test-suite prop-solveur-spec
   import:         common
@@ -46,7 +40,6 @@ test-suite prop-solveur-spec
   main-is:        Spec.hs
   other-modules:  ParserSpec
   build-depends:
-    , hspec             >=2.10.10
-    , hspec-megaparsec  >=2.2.0
+    , hspec         >=2.10.10
     , prop-solveur
-    , QuickCheck        >=2.14.3
+    , QuickCheck    >=2.14.3

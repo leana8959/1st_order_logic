@@ -4,6 +4,6 @@ import ParserSpec
 import Test.Hspec
 
 main :: IO ()
-main = hspec
-  $ do
+main = hspec $
+  do
     ParserSpec.spec

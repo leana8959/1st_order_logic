@@ -1,56 +1,49 @@
 module Solver where
 
-import Data.Bifunctor (Bifunctor(first))
-import qualified Data.Map.Strict as M
-import qualified Data.Set as S
-import qualified Data.Text as T
+import Data.Map.Strict qualified as M
+import Data.Set qualified as S
+import Data.Text qualified as T
 
-import Types (Formula(..), Ident, Valuation)
+import Types (Formula (..), Valuation, Var)
 
 -- | Générer toutes les valuations possible (ensemble `Val`)
-gen :: [Ident] -> [Valuation]
-gen ps =
-  let l       = length ps
-      bools 0 = [[]]
-      bools n = [p : t | p <- [True, False], t <- bools (n - 1)]
-  in  map (M.fromList . zip ps) (bools l)
+valuations :: [Var] -> [Valuation]
+valuations ps = M.fromList . zip ps <$> bools ps
+  where
+    -- Note: use ps as a counter
+    bools [] = [[]]
+    bools (_ : xs) = [p : t | p <- [True, False], t <- bools xs]
 
 -- | Trouver toutes les propositions
-findProp :: Formula -> [Ident]
-findProp =
-  let go :: Formula -> S.Set Ident
-      go (Prop p)           = S.singleton p
-      go (Not f)         = go f
-      go (And f1 f2)     = S.union (go f1) (go f2)
-      go (Or f1 f2)      = S.union (go f1) (go f2)
-      go (Implies f1 f2) = S.union (go f1) (go f2)
-      go _               = S.empty
-  in S.toList . go
+freeVars :: Formula -> [Var]
+freeVars = S.toList . go
+  where
+    go (Var p) = S.singleton p
+    go (Not f) = go f
+    go (And f1 f2) = S.union (go f1) (go f2)
+    go (Or f1 f2) = S.union (go f1) (go f2)
+    go (Implies f1 f2) = S.union (go f1) (go f2)
+    go _ = S.empty
 
 -- | Evaluer une formule étant donné une valuation
 eval :: Formula -> Valuation -> Bool
 eval f vs = case f of
-  Top           -> True
-  Bottom        -> False
-  Prop p           -> vs M.! p
-  Not f         -> not (eval f vs)
-  And f1 f2     -> eval f1 vs && eval f2 vs
-  Or f1 f2      -> eval f1 vs || eval f2 vs
-  Implies f1 f2 -> not (eval f1 vs) || eval f2 vs
+  Top -> True
+  Bottom -> False
+  Var p -> vs M.! p
+  Not h -> not (eval h vs)
+  And h g -> eval h vs && eval g vs
+  Or h g -> eval h vs || eval g vs
+  Implies h g -> not (eval h vs) || eval g vs
 
 -- | Trouver toutes les valuations qui satisfait une formule
 solve :: Formula -> [Valuation]
-solve f =
-  let vals = gen $ findProp f
-      res  = map (eval f) vals
-      ts   = map fst . filter snd $ zip vals res
-  in  ts
+solve f = filter (eval f) $ valuations (freeVars f)
 
 showSolution :: Valuation -> Int -> String
 showSolution v i =
-  unlines
-  $ ("solution nº" ++ show i)
-    : map ((\(p, value) -> p ++ ": " ++ show value) . first T.unpack) (M.toList v)
+  unlines $
+    ("solution nº" ++ show i) : ((\(var, val) -> T.unpack var ++ ": " ++ show val) <$> M.toList v)
 
 showSolutions :: [Valuation] -> String
-showSolutions vs = unlines $ uncurry showSolution <$> zip vs [1..]
+showSolutions vs = unlines $ uncurry showSolution <$> zip vs [1 ..]

@@ -1,7 +1,7 @@
 {
     "checkParents": "CheckOnSave",
     "checkProject": true,
-    "formattingProvider": "stylish-haskell",
+    "formattingProvider": "fourmolu",
     "maxCompletions": 40,
     "plugin": {
         "alternateNumberFormat": {
@@ -107,7 +107,7 @@
         },
         "rename": {
             "config": {
-                "crossModule": false
+                "crossModule": true
             },
             "globalOn": true
         },

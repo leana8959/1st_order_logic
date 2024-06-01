@@ -1,134 +1,88 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module ParserSpec where
 
-import qualified Data.Text as T (unlines)
+import Data.Text qualified as T (unlines)
 import Test.Hspec
-import Test.Hspec.Megaparsec
 import Text.Megaparsec
 
 import Parser
 import Types
 
-
-validate = mapM_ (\(input, expect) -> parse pFormula "" input `shouldParse` expect)
+(=?) input expect =
+  case runParser pFormula "<test>" input of
+    Right x -> x `shouldBe` expect
+    Left err -> expectationFailure $ "Parser error :\n" <> errorBundlePretty err
 
 spec :: Spec
-spec = describe
-  "Parser"
-  $ do
-    it "should parse implies"
-      $ validate
-        [ ("a -> b", Implies (Prop "a") (Prop "b"))
-        , ("a => b", Implies (Prop "a") (Prop "b"))
-        ]
-    it "should parse and"
-      $ validate
-        [ ("a and b", And (Prop "a") (Prop "b"))
-        , ("a ^ b", And (Prop "a") (Prop "b"))
-        ]
-    it "should parse or"
-      $ validate
-        [ ("a or b", Or (Prop "a") (Prop "b"))
-        , ("a v b", Or (Prop "a") (Prop "b"))
-        ]
-    it "should respect precedence and parentheses"
-      $ validate
-        [
-          ( "a or (b and c)"
-          , Or (Prop "a") (And (Prop "b") (Prop "c"))
-          )
-        ,
-          ( "a or b and c"
-          , And (Or (Prop "a") (Prop "b")) (Prop "c")
-          )
-        ,
-          ( "a and (b or c)"
-          , And (Prop "a") (Or (Prop "b") (Prop "c"))
-          )
-        ,
-          ( "a and b or c"
-          , And (Prop "a") (Or (Prop "b") (Prop "c"))
-          )
-        ,
-          ( "(a and b) or c"
-          , Or (And (Prop "a") (Prop "b")) (Prop "c")
-          )
-        ]
-    it "and should be associative"
-      $ validate
-        [
-          ( "a and b and c"
-          , And (And (Prop "a") (Prop "b")) (Prop "c")
-          )
-        ]
-    it "or should be associative"
-      $ validate
-        [
-          ( "a or b or c"
-          , Or (Or (Prop "a") (Prop "b")) (Prop "c")
-          )
-        ]
-    it "should pass more tests hehe"
-      $ validate
-        [
-          ( "p v q v r and (p -> ~q) and (q -> ~r) and (r -> ~p)"
-          , And
+spec =
+  describe "Parser" do
+    it "should parse implies" do
+      "a -> b" =? Implies (Var "a") (Var "b")
+      "a => b" =? Implies (Var "a") (Var "b")
+    it "should parse and" do
+      "a and b" =? And (Var "a") (Var "b")
+      "a /\\ b" =? And (Var "a") (Var "b")
+    it "should parse or" do
+      "a or b" =? Or (Var "a") (Var "b")
+      "a \\/ b" =? Or (Var "a") (Var "b")
+    it "should respect precedence and parentheses" do
+      "a or (b and c)" =? Or (Var "a") (And (Var "b") (Var "c"))
+      "a or b and c" =? And (Or (Var "a") (Var "b")) (Var "c")
+      "a and (b or c)" =? And (Var "a") (Or (Var "b") (Var "c"))
+      "a and b or c" =? And (Var "a") (Or (Var "b") (Var "c"))
+      "(a and b) or c" =? Or (And (Var "a") (Var "b")) (Var "c")
+    it "and should be associative" do
+      "a and b and c" =? And (And (Var "a") (Var "b")) (Var "c")
+    it "or should be associative" do
+      "a or b or c" =? Or (Or (Var "a") (Var "b")) (Var "c")
+    it "should pass more tests hehe" do
+      "p \\/ q \\/ r and (p -> ~q) and (q -> ~r) and (r -> ~p)"
+        =? And
+          ( And
               ( And
-                  ( And
-                      (Or (Or (Prop "p") (Prop "q")) (Prop "r"))
-                      (Implies (Prop "p") (Not (Prop "q")))
-                  )
-                  (Implies (Prop "q") (Not (Prop "r")))
+                  (Or (Or (Var "p") (Var "q")) (Var "r"))
+                  (Implies (Var "p") (Not (Var "q")))
               )
-              (Implies (Prop "r") (Not (Prop "p")))
+              (Implies (Var "q") (Not (Var "r")))
           )
+          (Implies (Var "r") (Not (Var "p")))
+    it "should handle linebreak" do
+      T.unlines ["a", "b", "c"] =? And (And (Var "a") (Var "b")) (Var "c")
+      T.unlines
+        [ "p \\/ q \\/ r"
+        , "p -> (~q)"
+        , "q -> (~r)"
+        , "r -> (~p)"
+        , ""
         ]
-    it "should handle linebreak"
-      $ validate
-        [
-          ( T.unlines ["a", "b", "c"]
-          , And (And (Prop "a") (Prop "b")) (Prop "c")
-          )
-        ,
-          ( T.unlines
-              [ "p v q v r"
-              , "p -> (~q)"
-              , "q -> (~r)"
-              , "r -> (~p)"
-              , ""
-              ]
-          , And
+        =? And
+          ( And
               ( And
-                  ( And
-                      (Or (Or (Prop "p") (Prop "q")) (Prop "r"))
-                      (Implies (Prop "p") (Not (Prop "q")))
-                  )
-                  (Implies (Prop "q") (Not (Prop "r")))
+                  (Or (Or (Var "p") (Var "q")) (Var "r"))
+                  (Implies (Var "p") (Not (Var "q")))
               )
-              (Implies (Prop "r") (Not (Prop "p")))
+              (Implies (Var "q") (Not (Var "r")))
           )
+          (Implies (Var "r") (Not (Var "p")))
+    it "should not halt where multiple empty lines are present" do
+      T.unlines
+        [ "p \\/ q \\/ r"
+        , ""
+        , "p -> (~q)"
+        , ""
+        , ""
+        , ""
+        , "q -> (~r)"
+        , "r -> (~p)"
+        , ""
         ]
-    it "should not halt where multiple empty lines are present"
-      $ validate
-        [
-          ( T.unlines
-              [ "p v q v r"
-              , ""
-              , "p -> (~q)"
-              , ""
-              , ""
-              , ""
-              , "q -> (~r)"
-              , "r -> (~p)"
-              , ""
-              ]
-          , And
+        =? And
+          ( And
               ( And
-                  ( And
-                      (Or (Or (Prop "p") (Prop "q")) (Prop "r"))
-                      (Implies (Prop "p") (Not (Prop "q")))
-                  )
-                  (Implies (Prop "q") (Not (Prop "r")))
+                  (Or (Or (Var "p") (Var "q")) (Var "r"))
+                  (Implies (Var "p") (Not (Var "q")))
               )
-              (Implies (Prop "r") (Not (Prop "p")))
+              (Implies (Var "q") (Not (Var "r")))
           )
-        ]
+          (Implies (Var "r") (Not (Var "p")))

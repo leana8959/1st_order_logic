@@ -1,58 +1,88 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Parser (pFormula) where
 
 import Data.Char (isAlpha)
 import Data.Text (Text)
 import Data.Void (Void)
-import Text.Megaparsec
-  (MonadParsec(eof, takeWhile1P, try), Parsec, between, choice, sepBy1,
-  sepEndBy1, skipMany, some, (<|>))
-import Text.Megaparsec.Char (eol, hspace1, string)
+import Text.Megaparsec (
+  MonadParsec (eof, takeWhile1P, try),
+  Parsec,
+  choice,
+  chunk,
+  many,
+  skipMany,
+  some,
+  (<|>),
+ )
+import Text.Megaparsec.Char (eol, hspace1)
 
-import Types (Formula(..))
+import Types (Formula (..))
 
-type Input = Text
-type Parser = Parsec Void Input
+type Parser = Parsec Void Text
 
-sc :: Parser ()
-sc = skipMany hspace1
-
-lexeme :: Parser a -> Parser a
-lexeme p = p <* sc
-
-symbol :: Text -> Parser Text
-symbol s = string s <* sc
-
-pIdent :: Parser Text
-pIdent = lexeme (takeWhile1P (Just "variable name") isAlpha)
+spaceConsumer :: Parser ()
+spaceConsumer = skipMany hspace1
 
 parens :: Parser a -> Parser a
-parens = between (symbol "(") (symbol ")")
+parens p = start *> p <* end
+  where
+    start = chunk "(" *> spaceConsumer
+    end = chunk ")" <* spaceConsumer
 
-sepBy2, sepEndBy2 :: Parser a -> Parser b -> Parser [a]
-sepBy2 p sp    = try $ (:) <$> p <* sp <*> p `sepBy1` sp
-sepEndBy2 p sp = try $ (:) <$> p <* sp <*> p `sepEndBy1` sp
-
+{- FOURMOLU_DISABLE -}
 impliesSymbol, notSymbol, andSymbol, orSymbol :: Parser Text
-impliesSymbol = symbol "->"  <|> symbol "=>"
-notSymbol     = symbol "not" <|> symbol "~"
-andSymbol     = symbol "and" <|> symbol "^"
-orSymbol      = symbol "or"  <|> symbol "v"
+impliesSymbol = (chunk "->"  <|> chunk "=>")  <* spaceConsumer
+notSymbol     = (chunk "not" <|> chunk "~")   <* spaceConsumer
+andSymbol     = (chunk "and" <|> chunk "/\\") <* spaceConsumer
+orSymbol      = (chunk "or"  <|> chunk "\\/") <* spaceConsumer
+{- FOURMOLU_ENABLE -}
 
-pTop, pBot, pProp :: Parser Formula
-pTop  = Top    <$  symbol "top"
-pBot  = Bottom <$  symbol "bot"
-pProp = Prop   <$> pIdent
+{- FOURMOLU_DISABLE -}
+top, bot, var :: Parser Formula
+top = try $ Top    <$  chunk "top"                                <* spaceConsumer
+bot = try $ Bottom <$  chunk "bot"                                <* spaceConsumer
+var = Var         <$> takeWhile1P (Just "variable name") isAlpha <* spaceConsumer
+{- FOURMOLU_ENABLE -}
 
-pSimple :: Parser Formula
-pSimple = choice [parens pExpr, pTop, pBot, pProp]
+simpleExpr :: Parser Formula
+simpleExpr = choice [parens newLineAnd, top, bot, var]
 
-pNot, pOr, pAnd, pImplies, pExpr :: Parser Formula
-pNot     = (Not            <$  notSymbol <*> pSimple)          <|> pSimple
-pOr      = try (foldl1 Or  <$> pNot `sepBy2` orSymbol)         <|> pNot
-pAnd     = try (foldl1 And <$> pOr `sepBy2` andSymbol)         <|> pOr
-pImplies = try (Implies    <$> pAnd <* impliesSymbol <*> pAnd) <|> pAnd
-pExpr    = try (foldl1 And <$> pImplies `sepEndBy2` some eol)  <|> pImplies
+notExpr :: Parser Formula
+notExpr = (notSymbol *> (Not <$> simpleExpr)) <|> simpleExpr
+
+wrapOr :: Formula -> Parser Formula
+wrapOr f = (p >>= wrapOr) <|> pure f
+  where
+    p = Or f <$> (orSymbol *> notExpr)
+
+orExpr :: Parser Formula
+orExpr = notExpr >>= wrapOr
+
+wrapAnd :: Formula -> Parser Formula
+wrapAnd f = (p >>= wrapAnd) <|> pure f
+  where
+    p = And f <$> (andSymbol *> orExpr)
+
+andExpr :: Parser Formula
+andExpr = orExpr >>= wrapAnd
+
+wrapImply :: Formula -> Parser Formula
+wrapImply f = (p >>= wrapImply) <|> pure f
+  where
+    p = Implies f <$> (impliesSymbol *> andExpr)
+
+implyExpr :: Parser Formula
+implyExpr = andExpr >>= wrapImply
+
+-- try here because is a newline might not have a rhs (trailing newline)
+wrapNewlineAnd :: Formula -> Parser Formula
+wrapNewlineAnd f = (try p >>= wrapNewlineAnd) <|> pure f
+  where
+    p = And f <$> (some eol *> spaceConsumer *> implyExpr)
+
+newLineAnd :: Parser Formula
+newLineAnd = implyExpr >>= wrapNewlineAnd
 
 pFormula :: Parser Formula
-pFormula = between blankLines blankLines pExpr <* eof
-  where blankLines = skipMany eol
+pFormula = many eol *> newLineAnd <* many eol <* eof
