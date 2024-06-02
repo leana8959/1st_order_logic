@@ -4,10 +4,10 @@ import Data.Map.Strict qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
 
-import Types (Formula (..), Valuation, Var)
+import Types (Formula (..), Valuation, Ident)
 
 -- | Générer toutes les valuations possible (ensemble `Val`)
-valuations :: [Var] -> [Valuation]
+valuations :: [Ident] -> [Valuation]
 valuations ps = M.fromList . zip ps <$> bools ps
   where
     -- Note: use ps as a counter
@@ -15,7 +15,7 @@ valuations ps = M.fromList . zip ps <$> bools ps
     bools (_ : xs) = [p : t | p <- [True, False], t <- bools xs]
 
 -- | Trouver toutes les propositions
-freeVars :: Formula -> [Var]
+freeVars :: Formula -> [Ident]
 freeVars = S.toList . go
   where
     go (Var p) = S.singleton p
