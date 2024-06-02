@@ -76,17 +76,21 @@ argsParser =
     (fullDesc <> header "prop_solveur - a toy logic solver" <> progDesc "Solve logic formulaes")
   where
     p =
-      flag'
-        Repl
-        ( long "repl"
-            <> short 'r'
-            <> help "Solve interactively"
-        )
-        <|> ( strOption (long "file" <> short 'f' <> help "Read from file, use dash to mean stdin")
-                <&> \case
-                  "-" -> Stdin
-                  fname -> File fname
+      let
+        replFlagParser =
+          flag'
+            Repl
+            ( long "repl"
+                <> short 'r'
+                <> help "Solve interactively"
             )
+        fileParser =
+          strOption (long "file" <> short 'f' <> help "Read from file, use dash to mean stdin")
+            <&> \case
+              "-" -> Stdin
+              fname -> File fname
+       in
+        replFlagParser <|> fileParser
 
 main :: IO ()
 main = execParser argsParser >>= go
