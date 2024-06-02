@@ -34,7 +34,7 @@ import System.Console.ANSI (
   setSGR,
  )
 import System.Exit (exitSuccess)
-import System.IO (IOMode (ReadMode), openFile)
+import System.IO (IOMode (ReadMode), isEOF, openFile)
 import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.Pretty.Simple (pPrint)
 
@@ -105,8 +105,13 @@ go m = do
       Stdin -> TIO.getContents
       Repl -> do
         putStrLn "Please enter a logical formula, :q to quit"
+        checkEof
         line <- TIO.getLine
         if line == ":q" then exitSuccess else return line
+        where
+          checkEof = do
+            x <- isEOF
+            when x (putStrLn "Read EOF... Leaving..." >> exitSuccess)
 
     parse = first errorBundlePretty . runParser pFormula (show m)
 
