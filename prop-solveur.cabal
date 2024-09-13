@@ -9,11 +9,11 @@ common common
   default-language:   GHC2021
   ghc-options:        -Wall -Wextra
   build-depends:
-    , base           ^>=4.17
-    , containers     ^>=0.6
-    , megaparsec     ^>=9.3.1
-    , pretty-simple  ^>=4.1.2.0
-    , text           ^>=2.0.2
+    , base
+    , containers
+    , megaparsec
+    , pretty-simple
+    , text
 
   default-extensions: BlockArguments
 
@@ -29,8 +29,8 @@ executable prop-solveur
   import:        common
   main-is:       app/Main.hs
   build-depends:
-    , ansi-terminal         ^>=0.11.5
-    , optparse-applicative  ^>=0.17.1.0
+    , ansi-terminal
+    , optparse-applicative
     , prop-solveur
 
 test-suite prop-solveur-spec
@@ -40,6 +40,6 @@ test-suite prop-solveur-spec
   main-is:        Spec.hs
   other-modules:  ParserSpec
   build-depends:
-    , hspec         >=2.10.10
+    , hspec
     , prop-solveur
-    , QuickCheck    >=2.14.3
+    , QuickCheck
