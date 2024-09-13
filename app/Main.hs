@@ -6,7 +6,6 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Functor ((<&>))
-import Data.Text qualified as T
 import Options.Applicative (
   ParserInfo,
   execParser,
@@ -79,7 +78,7 @@ loop m = do
         Just ":q" -> do
           outputStrLn "Exiting ..."
           liftIO exitSuccess
-        Just line -> pure (T.pack line)
+        Just line -> pure line
 
     parse = first errorBundlePretty . runParser pFormula (show m)
 

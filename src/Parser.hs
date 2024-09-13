@@ -3,7 +3,6 @@
 module Parser (pFormula) where
 
 import Data.Char (isAlpha)
-import Data.Text (Text)
 import Data.Void (Void)
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
@@ -19,7 +18,7 @@ import Text.Megaparsec.Char (eol, hspace1)
 
 import Types (Formula (..))
 
-type Parser = Parsec Void Text
+type Parser = Parsec Void String
 
 spaceConsumer :: Parser ()
 spaceConsumer = skipMany hspace1
@@ -31,7 +30,7 @@ parens p = start *> p <* end
     end = chunk ")" <* spaceConsumer
 
 {- FOURMOLU_DISABLE -}
-impliesSymbol, notSymbol, andSymbol, orSymbol :: Parser Text
+impliesSymbol, notSymbol, andSymbol, orSymbol :: Parser String
 impliesSymbol = (chunk "->"  <|> chunk "=>")  <* spaceConsumer
 notSymbol     = (chunk "not" <|> chunk "~")   <* spaceConsumer
 andSymbol     = (chunk "and" <|> chunk "/\\") <* spaceConsumer
@@ -42,7 +41,7 @@ orSymbol      = (chunk "or"  <|> chunk "\\/") <* spaceConsumer
 top, bot, var :: Parser Formula
 top = try $ Top    <$  chunk "top"                                <* spaceConsumer
 bot = try $ Bottom <$  chunk "bot"                                <* spaceConsumer
-var = Var         <$> takeWhile1P (Just "variable name") isAlpha <* spaceConsumer
+var = Var          <$> takeWhile1P (Just "variable name") isAlpha <* spaceConsumer
 {- FOURMOLU_ENABLE -}
 
 simpleExpr :: Parser Formula

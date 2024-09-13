@@ -2,7 +2,6 @@ module Solver where
 
 import Data.Map.Strict qualified as M
 import Data.Set qualified as S
-import Data.Text qualified as T
 
 import Types (Formula (..), Ident, Valuation)
 
@@ -43,7 +42,7 @@ solve f = filter (eval f) $ valuations (freeVars f)
 showSolution :: Valuation -> Int -> String
 showSolution v i =
   unlines $
-    ("solution nº" ++ show i) : ((\(var, val) -> T.unpack var ++ ": " ++ show val) <$> M.toList v)
+    ("solution nº" ++ show i) : ((\(var, val) -> var ++ ": " ++ show val) <$> M.toList v)
 
 showSolutions :: [Valuation] -> String
 showSolutions vs = unlines $ uncurry showSolution <$> zip vs [1 ..]
