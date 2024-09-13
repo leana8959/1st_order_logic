@@ -38,10 +38,11 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            pkgs.cabal-install
             hPkgs.ghc
+            pkgs.cabal-install
+            hPkgs.cabal-fmt
             hPkgs.haskell-language-server
-            hPkgs.stylish-haskell
+            hPkgs.fourmolu
           ];
         };
       }
