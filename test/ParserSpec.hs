@@ -1,8 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module ParserSpec where
 
-import Data.Text qualified as T (unlines)
 import Test.Hspec
 import Text.Megaparsec
 
@@ -48,8 +45,8 @@ spec =
           )
           (Implies (Var "r") (Not (Var "p")))
     it "should handle linebreak" do
-      T.unlines ["a", "b", "c"] =? And (And (Var "a") (Var "b")) (Var "c")
-      T.unlines
+      unlines ["a", "b", "c"] =? And (And (Var "a") (Var "b")) (Var "c")
+      unlines
         [ "p \\/ q \\/ r"
         , "p -> (~q)"
         , "q -> (~r)"
@@ -66,7 +63,7 @@ spec =
           )
           (Implies (Var "r") (Not (Var "p")))
     it "should not halt where multiple empty lines are present" do
-      T.unlines
+      unlines
         [ "p \\/ q \\/ r"
         , ""
         , "p -> (~q)"
