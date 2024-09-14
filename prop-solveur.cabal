@@ -29,6 +29,7 @@ executable prop-solveur
   import:        common
   main-is:       app/Main.hs
   build-depends:
+    , ansi-terminal
     , optparse-applicative
     , prop-solveur
     , haskeline

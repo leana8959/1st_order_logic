@@ -23,6 +23,13 @@ import Options.Applicative (
   (<**>),
   (<|>),
  )
+import System.Console.ANSI (
+  Color (Blue, Red),
+  ColorIntensity (Vivid),
+  ConsoleLayer (Foreground),
+  SGR (SetColor),
+  setSGRCode,
+ )
 import System.Console.Haskeline
 import System.Exit (exitSuccess)
 import Text.Megaparsec (errorBundlePretty, runParser)
@@ -42,6 +49,12 @@ data CliArgs = CliArgs
   -- ^ show all solutions or not
   }
   deriving (Eq)
+
+withColor :: [SGR] -> String -> String
+withColor codes s = set <> s <> unset
+  where
+    set = setSGRCode codes
+    unset = setSGRCode []
 
 argsParser :: ParserInfo CliArgs
 argsParser =
@@ -89,10 +102,14 @@ loop m = do
 
     output (Right ast) = do
       let sols = solve ast
-      outputStrLn $ "Parsed " <> show ast
+      outputStrLn $ "Parsed " <> withColor [SetColor Foreground Vivid Blue] (show ast)
       outputStrLn "Solutions"
       outputStrLn $ showSolutions sols
-      outputStrLn $ "There are " <> show (length sols) <> " solutions(s)"
+      outputStrLn
+        . withColor [SetColor Foreground Vivid Blue]
+        $ "There are " <> show (length sols) <> " solutions(s)"
     output (Left err) = do
       outputStrLn "Failed to parse ..."
-      outputStrLn err
+      outputStrLn
+        . withColor [SetColor Foreground Vivid Red]
+        $ err
