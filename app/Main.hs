@@ -6,6 +6,7 @@ import Control.Monad (when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Functor ((<&>))
+import Data.Map.Strict qualified as M
 import Options.Applicative (
   ParserInfo,
   execParser,
@@ -35,7 +36,9 @@ import System.Exit (exitSuccess)
 import Text.Megaparsec (errorBundlePretty, runParser)
 
 import Parser (pFormula)
-import Solver (showSolutions, solve)
+import Solver (freeVars, solve, valuations)
+
+import Types
 
 data InputKind = File String | Repl deriving (Eq)
 instance Show InputKind where
@@ -102,12 +105,40 @@ loop m = do
 
     output (Right ast) = do
       let sols = solve ast
+      let stats = showStats ast
       outputStrLn $ "Parsed " <> withColor [SetColor Foreground Vivid Blue] (show ast)
       outputStrLn "Solutions"
+      outputStrLn stats
       outputStrLn $ showSolutions sols
       outputStrLn
         . withColor [SetColor Foreground Vivid Blue]
         $ "There are " <> show (length sols) <> " solutions(s)"
+      where
+        showSolution :: Valuation -> Int -> String
+        showSolution v i =
+          unlines $
+            ("solution nº" ++ show i) : ((\(var, val) -> var ++ ": " ++ show val) <$> M.toList v)
+
+        showSolutions :: [Valuation] -> String
+        showSolutions vs = unlines $ uncurry showSolution <$> zip vs [1 ..]
+
+        showStats :: Formula -> String
+        showStats f =
+          unlines
+            [ "There are "
+                <> withColor [SetColor Foreground Vivid Blue] (show propsCount)
+                <> " propositional variables,"
+            , "which is "
+                <> withColor [SetColor Foreground Vivid Blue] (show valuationsCount)
+                <> " possibilties,"
+            , "where among them "
+                <> withColor [SetColor Foreground Vivid Blue] (show trues)
+                <> " are valuated as true"
+            ]
+          where
+            propsCount = length (freeVars f)
+            valuationsCount = length $ valuations (freeVars f)
+            trues = length $ solve f
     output (Left err) = do
       outputStrLn "Failed to parse ..."
       outputStrLn

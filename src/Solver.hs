@@ -38,11 +38,3 @@ eval f vs = case f of
 -- | Trouver toutes les valuations qui satisfait une formule
 solve :: Formula -> [Valuation]
 solve f = filter (eval f) $ valuations (freeVars f)
-
-showSolution :: Valuation -> Int -> String
-showSolution v i =
-  unlines $
-    ("solution nº" ++ show i) : ((\(var, val) -> var ++ ": " ++ show val) <$> M.toList v)
-
-showSolutions :: [Valuation] -> String
-showSolutions vs = unlines $ uncurry showSolution <$> zip vs [1 ..]
