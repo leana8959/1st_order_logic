@@ -43,7 +43,7 @@ import Types
 data InputKind = File String | Repl deriving (Eq)
 instance Show InputKind where
   show (File fname) = fname
-  show Repl = "stdin"
+  show Repl = "<stdin>"
 
 data CliArgs = CliArgs
   { input :: InputKind
