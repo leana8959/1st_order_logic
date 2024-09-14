@@ -19,6 +19,7 @@ import Options.Applicative (
   progDesc,
   short,
   strOption,
+  switch,
   (<**>),
   (<|>),
  )
@@ -29,47 +30,51 @@ import Text.Megaparsec (errorBundlePretty, runParser)
 import Parser (pFormula)
 import Solver (showSolutions, solve)
 
-data Mode = File String | Repl deriving (Eq)
-instance Show Mode where
-  show Repl = "<repl>"
-  show (File name) = name
+data InputKind = File String | Repl deriving (Eq)
+instance Show InputKind where
+  show (File fname) = fname
+  show Repl = "stdin"
 
-argsParser :: ParserInfo Mode
+data CliArgs = CliArgs
+  { input :: InputKind
+  -- ^ where to interact with
+  , detail :: Bool
+  -- ^ show all solutions or not
+  }
+  deriving (Eq)
+
+argsParser :: ParserInfo CliArgs
 argsParser =
   info
-    (p <**> helper)
+    (CliArgs <$> inputParser <*> detailParser <**> helper)
     (fullDesc <> header "prop_solveur - a toy logic solver" <> progDesc "Solve logic formulaes")
   where
-    p =
-      let
-        replFlagParser =
-          flag'
-            Repl
-            ( long "repl"
-                <> short 'r'
-                <> help "Solve interactively"
-            )
-        fileParser =
-          strOption (long "file" <> short 'f' <> help "Read from file, use dash to mean stdin")
-            <&> File
-       in
-        replFlagParser <|> fileParser
+    inputParser =
+      let replFlagParser =
+            flag' Repl (long "repl" <> short 'r' <> help "Solve interactively")
+          fileParser =
+            strOption (long "file" <> short 'f' <> help "Read from file, use dash to mean stdin")
+              <&> File
+       in replFlagParser <|> fileParser
+
+    detailParser =
+      switch (long "detail" <> short 'd' <> help "Show all the solutions")
 
 main :: IO ()
 main = do
-  mode <- execParser argsParser
-  case mode of
-    File fname -> runInputTBehavior (useFile fname) defaultSettings (loop mode)
-    Repl -> runInputT defaultSettings (loop mode)
+  args <- execParser argsParser
+  case args of
+    CliArgs {input = File fname} -> runInputTBehavior (useFile fname) defaultSettings (loop args)
+    CliArgs {input = Repl} -> runInputT defaultSettings (loop args)
 
-loop :: Mode -> InputT IO ()
+loop :: CliArgs -> InputT IO ()
 loop m = do
   content <- loadContent
   output . parse $ content
   loop m
   where
     loadContent = do
-      when (m == Repl) (outputStrLn "Please enter a logical formula")
+      when (input m == Repl) (outputStrLn "Please enter a logical formula")
       mline <- getInputLine "> "
       case mline of
         Nothing -> do
@@ -80,7 +85,7 @@ loop m = do
           liftIO exitSuccess
         Just line -> pure line
 
-    parse = first errorBundlePretty . runParser pFormula (show m)
+    parse = first errorBundlePretty . runParser pFormula (show . input $ m)
 
     output (Right ast) = do
       let sols = solve ast
