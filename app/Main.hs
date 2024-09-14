@@ -109,7 +109,7 @@ loop m = do
       outputStrLn $ "Parsed " <> withColor [SetColor Foreground Vivid Blue] (show ast)
       outputStrLn "Solutions"
       outputStrLn stats
-      outputStrLn $ showSolutions sols
+      when (detail m) (outputStrLn $ showSolutions sols)
       outputStrLn
         . withColor [SetColor Foreground Vivid Blue]
         $ "There are " <> show (length sols) <> " solutions(s)"
