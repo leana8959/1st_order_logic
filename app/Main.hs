@@ -83,12 +83,18 @@ main = do
     CliArgs {input = File fname} -> runInputTBehavior (useFile fname) defaultSettings (loop args)
     CliArgs {input = Repl} -> runInputT defaultSettings (loop args)
 
+data ReplInputKind = Content String | NewState CliArgs
+
 loop :: CliArgs -> InputT IO ()
 loop m = do
-  content <- loadContent
-  output . parse $ content
-  loop m
+  got <- loadContent
+  case got of
+    Content content -> do
+      output . parse $ content
+      loop m
+    NewState m' -> loop m'
   where
+    loadContent :: InputT IO ReplInputKind
     loadContent = do
       when (input m == Repl) (outputStrLn "Please enter a logical formula")
       mline <- getInputLine "> "
@@ -96,10 +102,18 @@ loop m = do
         Nothing -> do
           outputStrLn "Read EOF, exiting"
           liftIO exitSuccess
+
         Just ":q" -> do
           outputStrLn "Exiting ..."
           liftIO exitSuccess
-        Just line -> pure line
+        Just ":set detail" -> do
+          outputStrLn "Enabled detail. Will print all solutions"
+          pure (NewState (m {detail = True}))
+        Just ":set nodetail" -> do
+          outputStrLn "Disabled detail. Will not print all solutions"
+          pure (NewState (m {detail = False}))
+
+        Just line -> pure (Content line)
 
     parse = first errorBundlePretty . runParser pFormula (show . input $ m)
 
@@ -124,17 +138,19 @@ loop m = do
 
         showStats :: Formula -> String
         showStats f =
-          unlines
-            [ "There are "
-                <> withColor [SetColor Foreground Vivid Blue] (show propsCount)
-                <> " propositional variables,"
-            , "which is "
-                <> withColor [SetColor Foreground Vivid Blue] (show valuationsCount)
-                <> " possibilties,"
-            , "where among them "
-                <> withColor [SetColor Foreground Vivid Blue] (show trues)
-                <> " are valuated as true"
-            ]
+          unlines $
+            ["This is a ✨tautology✨" | valuationsCount == trues]
+              ++ ["This is a 🚫contradiction🚫" | trues == 0]
+              ++ [ "There are "
+                    <> withColor [SetColor Foreground Vivid Blue] (show propsCount)
+                    <> " propositional variables,"
+                 , "which is "
+                    <> withColor [SetColor Foreground Vivid Blue] (show valuationsCount)
+                    <> " possibilties,"
+                 , "where among them "
+                    <> withColor [SetColor Foreground Vivid Blue] (show trues)
+                    <> " are valuated as true"
+                 ]
           where
             propsCount = length (freeVars f)
             valuationsCount = length $ valuations (freeVars f)
