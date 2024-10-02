@@ -3,48 +3,45 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
   outputs =
     inputs:
-    inputs.flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import inputs.nixpkgs { inherit system; };
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
 
-        hPkgs = pkgs.haskellPackages;
-      in
-      {
-        formatter = pkgs.nixfmt-rfc-style;
+      imports = [ ./nix/overlays.nix ];
 
-        packages.default =
-          let
-            rawPackage = pkgs.haskellPackages.callCabal2nix "prop-solveur" ./. { };
-          in
-          pkgs.haskell.lib.justStaticExecutables (
-            rawPackage.overrideAttrs (old: {
-              nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.installShellFiles ];
-              postInstall =
-                (old.postInstall or "")
-                + ''
-                  installShellCompletion --cmd prop-solveur \
-                      --bash <("$out/bin/prop-solveur" --bash-completion-script "$out/bin/prop-solveur") \
-                      --fish <("$out/bin/prop-solveur" --fish-completion-script "$out/bin/prop-solveur") \
-                      --zsh  <("$out/bin/prop-solveur" --zsh-completion-script  "$out/bin/prop-solveur")
-                '';
-            })
-          );
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
 
-        devShells.default = pkgs.mkShell {
-          buildInputs = [
-            hPkgs.ghc
-            pkgs.cabal-install
-            hPkgs.cabal-fmt
-            hPkgs.haskell-language-server
-            hPkgs.fourmolu
-          ];
+      perSystem =
+        { pkgs, self', ... }:
+        {
+          formatter = pkgs.nixfmt-rfc-style;
+
+          packages.default = (inputs.self.overlays.default pkgs pkgs).prop-solveur;
+
+          devShells.default = pkgs.mkShell {
+            packages =
+              let
+                hPkgs = pkgs.haskellPackages;
+              in
+              [
+                hPkgs.ghc
+                pkgs.cabal-install
+                hPkgs.cabal-fmt
+                hPkgs.haskell-language-server
+                hPkgs.fourmolu
+              ];
+          };
+
         };
-      }
-    );
+
+    };
+
 }
