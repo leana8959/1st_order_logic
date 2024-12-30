@@ -8,39 +8,30 @@
 
 module Main where
 
-import Data.Bifunctor (Bifunctor (first))
-import Data.Map.Strict qualified as M
+import Data.Bifunctor (Bifunctor (bimap))
 import Network.Wai
 import Network.Wai.Handler.Warp
+import Network.Wai.Middleware.Cors (simpleCors)
 import Servant
 import Text.Megaparsec (errorBundlePretty, runParser)
 
-import Network.Wai.Middleware.Cors (simpleCors)
 import Parser (pFormula)
 import Solver (solve)
-import Types
+import Types (Valuation)
 
 type PropSolveurAPI =
   ( "api"
-      :> ReqBody '[PlainText] String
-      :> Post '[PlainText] String
+      :> ReqBody '[JSON, PlainText] String
+      :> Post '[JSON] (Either String [Valuation])
   )
 
-handleSolve :: String -> Handler String
+handleSolve :: String -> Handler (Either String [Valuation])
 handleSolve input = do
   let parsed =
-        first errorBundlePretty $
-          runParser pFormula "web" input
-  case parsed of
-    Left err -> pure err
-    Right formula -> pure . showSolutions . solve $ formula
-  where
-    showSolution :: Valuation -> Int -> String
-    showSolution v i =
-      unlines $
-        ("solution nº" ++ show i) : ((\(var, val) -> var ++ ": " ++ show val) <$> M.toList v)
-    showSolutions :: [Valuation] -> String
-    showSolutions vs = unlines $ uncurry showSolution <$> zip vs [1 ..]
+        bimap errorBundlePretty solve $
+          runParser pFormula "<web>" input
+
+  pure parsed
 
 server :: Server PropSolveurAPI
 server = handleSolve
