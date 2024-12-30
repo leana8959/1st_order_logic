@@ -7,6 +7,13 @@ This project is made to implement a simple solver that, given a formula $f$, fin
 A TL;DR for the logic is that, we enumarete all possible valuations of a formula and evaluates the given formula for each valuation. We then filter out those that evaluates to false.  
 This is an exponential operation, more sophisticated heuristics are planned to be implemented (I'm yet to learn them).
 
+# As a web server
+Run
+```sh
+docker build . -t "prop-solveur"
+docker run -p 8080:8080 "prop-solveur"
+```
+
 # Execution
 1. Install `stack` with your favorite package manager.
 2. Run `stack run` to execute the program.
