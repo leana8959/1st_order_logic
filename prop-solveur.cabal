@@ -30,9 +30,21 @@ executable prop-solveur
   main-is:       app/Main.hs
   build-depends:
     , ansi-terminal
+    , haskeline
     , optparse-applicative
     , prop-solveur
-    , haskeline
+
+executable prop-solveur-web
+  import:  common
+  main-is: app/Web.hs
+  build-depends:
+    , servant
+    , servant-server
+    , wai
+    , warp
+    , aeson
+    , prop-solveur
+    , wai-cors
 
 test-suite prop-solveur-spec
   import:         common
